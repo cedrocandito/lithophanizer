@@ -1,5 +1,7 @@
 package it.davideorlandi.lithophanizer;
 
+import java.io.File;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -59,6 +61,8 @@ public class Main
 
     private static final String BOTTOM_BORDER_THICKNESS_LONG_OPTION = "border-bottom-thickness";
 
+    private static final String FLAT_INSIDE_LONG_OPTION = "flat-inside";
+
     /**
      * Entry point.
      * @param args command line arguments.
@@ -77,35 +81,38 @@ public class Main
                 Option.builder().option(DIAMETER_SHORT_OPTION).longOpt(DIAMETER_LONG_OPTION).desc(
                         "Diameter of the lithophane cylinder, in millimeters, measured on the flat surface; default "
                                 + DEFAULT_DIAMETER + ".").hasArg().argName("number").type(
-                                        Float.class).build());
+                                        Double.class).build());
 
         op.addOption(Option.builder().option(MIN_THICKNESS_SHORT_OPTION).longOpt(
                 MIN_THICKNESS_LONG_OPTION).desc(
                         "Minimum (ligthtest) thickness of the lithophane; default "
                                 + DEFAULT_MIN_THICKNESS + ".").hasArg().argName("number").type(
-                                        Float.class).build());
+                                        Double.class).build());
 
         op.addOption(Option.builder().option(MAX_THICKNESS_SHORT_OPTION).longOpt(
                 MAX_THICKNESS_LONG_OPTION).desc(
                         "Maximum (darkest) thickness of the lithophane; default "
                                 + DEFAULT_MAX_THICKNESS + ".").hasArg().argName("number").type(
-                                        Float.class).build());
+                                        Double.class).build());
 
         op.addOption(Option.builder().longOpt(TOP_BORDER_HEIGHT_LONG_OPTION).desc(
                 "Height of top border (0 = no border); default " + DEFAULT_TOP_BORDER_HEIGHT
-                        + ".").hasArg().argName("number").type(Float.class).build());
+                        + ".").hasArg().argName("number").type(Double.class).build());
 
         op.addOption(Option.builder().longOpt(TOP_BORDER_THICKNESS_LONG_OPTION).desc(
                 "Thickness of top border; default " + DEFAULT_TOP_BORDER_THICKNESS
-                        + ".").hasArg().argName("number").type(Float.class).build());
+                        + ".").hasArg().argName("number").type(Double.class).build());
 
         op.addOption(Option.builder().longOpt(BOTTOM_BORDER_HEIGHT_LONG_OPTION).desc(
                 "Height of bottom border (0 = no border); default " + DEFAULT_BOTTOM_BORDER_HEIGHT
-                        + ".").hasArg().argName("number").type(Float.class).build());
+                        + ".").hasArg().argName("number").type(Double.class).build());
 
         op.addOption(Option.builder().longOpt(BOTTOM_BORDER_THICKNESS_LONG_OPTION).desc(
                 "Thickness of bottom border; default " + DEFAULT_BOTTOM_BORDER_THICKNESS
-                        + ".").hasArg().argName("number").type(Float.class).build());
+                        + ".").hasArg().argName("number").type(Double.class).build());
+
+        op.addOption(Option.builder().longOpt(FLAT_INSIDE_LONG_OPTION).desc(
+                "Makes the patterned face outside and the flat face inside (default is flat outside).").build());
 
         try
         {
@@ -119,33 +126,37 @@ public class Main
                 CommandLineParser parser = new DefaultParser();
                 CommandLine cmd = parser.parse(op, args);
 
-                String imagePath = cmd.getOptionValue(IMAGE_LONG_OPTION);
-                String outputPath = cmd.getOptionValue(OUTPUT_LONG_OPTION);
-                Float diameter = Float.valueOf(
+                File imagePath = new File(cmd.getOptionValue(IMAGE_LONG_OPTION));
+                File outputPath = new File(cmd.getOptionValue(OUTPUT_LONG_OPTION));
+                double diameter = Double.valueOf(
                         cmd.getOptionValue(DIAMETER_LONG_OPTION, DEFAULT_DIAMETER));
-                Float minThickness = Float.valueOf(
+                double minThickness = Double.valueOf(
                         cmd.getOptionValue(MIN_THICKNESS_LONG_OPTION, DEFAULT_MIN_THICKNESS));
-                Float maxThickness = Float.valueOf(
+                double maxThickness = Double.valueOf(
                         cmd.getOptionValue(MAX_THICKNESS_LONG_OPTION, DEFAULT_MAX_THICKNESS));
-                Float topBorderThickness = Float.valueOf(cmd.getOptionValue(
+                double topBorderThickness = Double.valueOf(cmd.getOptionValue(
                         TOP_BORDER_THICKNESS_LONG_OPTION, DEFAULT_TOP_BORDER_THICKNESS));
-                Float topBorderHeight = Float.valueOf(cmd.getOptionValue(
+                double topBorderHeight = Double.valueOf(cmd.getOptionValue(
                         TOP_BORDER_HEIGHT_LONG_OPTION, DEFAULT_TOP_BORDER_HEIGHT));
-                Float bottomBorderThickness = Float.valueOf(cmd.getOptionValue(
+                double bottomBorderThickness = Double.valueOf(cmd.getOptionValue(
                         BOTTOM_BORDER_THICKNESS_LONG_OPTION, DEFAULT_BOTTOM_BORDER_THICKNESS));
-                Float bottomBorderHeight = Float.valueOf(cmd.getOptionValue(
+                double bottomBorderHeight = Double.valueOf(cmd.getOptionValue(
                         BOTTOM_BORDER_HEIGHT_LONG_OPTION, DEFAULT_BOTTOM_BORDER_HEIGHT));
+                boolean flatInside = cmd.hasOption(FLAT_INSIDE_LONG_OPTION);
 
-                System.out.println(String.format(
-                        "Image=%s, output=%s, diameter=%f, minThickness=%f, maxThickness=%f, topBorderHeight=%f, topBorderThickness=%f, bottomBorderHeight=%f, bottomBorderThickness=%f",
-                        imagePath, outputPath, diameter, minThickness, maxThickness,
-                        topBorderHeight, topBorderThickness, bottomBorderHeight,
-                        bottomBorderThickness));
+                Lithophanizer lithophanizer = new Lithophanizer(imagePath, outputPath, diameter,
+                        minThickness, maxThickness, topBorderThickness, topBorderHeight,
+                        bottomBorderThickness, bottomBorderHeight, flatInside);
+                lithophanizer.generateLithophane();
             }
         }
-        catch (ParseException pe)
+        catch (ParseException | IllegalArgumentException simpleException)
         {
-            System.err.println(pe.getMessage());
+            System.err.println(simpleException.getMessage());
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
         }
     }
 }

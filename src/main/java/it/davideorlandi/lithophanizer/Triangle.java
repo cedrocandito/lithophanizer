@@ -18,7 +18,33 @@ public class Triangle
      */
     public Triangle(final double [] [] vertices)
     {
-        this.vertices = vertices;
+        this(vertices, false);
+    }
+
+    /**
+     * Constructor.
+     * <p>
+     * Note: it's not enough to invert the normal in the output .stl file; the order of the vertices
+     * must be inverted too.
+     * </p>
+     * @param vertices array of 3 vertices vectors. The array will be copied.
+     * @param invertNormal if true, the normal will be inverted (left-handed).
+     */
+    public Triangle(final double [] [] vertices, final boolean invertNormal)
+    {
+        this.vertices = new double [3] [];
+        if (invertNormal)
+        {
+            this.vertices[0] = vertices[2];
+            this.vertices[1] = vertices[1];
+            this.vertices[2] = vertices[0];
+        }
+        else
+        {
+            this.vertices[0] = vertices[0];
+            this.vertices[1] = vertices[1];
+            this.vertices[2] = vertices[2];
+        }
     }
 
     /**
@@ -30,6 +56,19 @@ public class Triangle
     public Triangle(final double [] v1, final double [] v2, final double [] v3)
     {
         this(new double [] [] { v1, v2, v3 });
+    }
+
+    /**
+     * Constructor.
+     * @param v1 first vertex.
+     * @param v2 second vertex.
+     * @param v3 third vertex.
+     * @param invertNormal if true, the normal will be inverted (left-handed).
+     */
+    public Triangle(final double [] v1, final double [] v2, final double [] v3,
+            final boolean invertNormal)
+    {
+        this(new double [] [] { v1, v2, v3 }, invertNormal);
     }
 
     /**
@@ -49,6 +88,7 @@ public class Triangle
         n[0] /= l;
         n[1] /= l;
         n[2] /= l;
+
         return n;
     }
 
@@ -77,6 +117,6 @@ public class Triangle
      */
     protected String formatVector(final double [] vector)
     {
-        return String.format(Locale.US, "%.3f, %.3f, %.3f", vector[0], vector[1], vector[2]);
+        return String.format(Locale.US, "%.3f %.3f %.3f", vector[0], vector[1], vector[2]);
     }
 }

@@ -44,6 +44,12 @@ public class Lithophanizer
 
     private Stl stl;
 
+    /** Precalculated cosine for each column. */
+    private double [] cos;
+
+    /** Precalculated sine for each column. */
+    private double [] sin;
+
     /**
      * Costruttore.
      * @param imagePath path of the source png image.
@@ -100,6 +106,18 @@ public class Lithophanizer
         this.imageWidth = image.getWidth();
         this.imageHeight = image.getHeight();
 
+        this.angleStep = (2.0 * Math.PI) / imageWidth;
+
+        // precalculate cos and sin
+        this.cos = new double [imageWidth];
+        this.sin = new double [imageWidth];
+        for (int col = 0; col < imageWidth; col++)
+        {
+            double a = col * angleStep;
+            cos[col] = Math.cos(a);
+            sin[col] = Math.sin(a);
+        }
+
         stl = new Stl("lithophane");
 
         // ?????
@@ -107,30 +125,125 @@ public class Lithophanizer
         // System.out.println("primo pixel: " + new Color(image.getRGB(0, 0)));
         // ?????
 
-        this.angleStep = (2.0 * Math.PI) / imageWidth;
+        Layer bottomLayer = createBorderLayer(0.0, bottomBorderThickness);
+        Layer topLayer = createBorderLayer(bottomBorderHeight, bottomBorderThickness);
+        writeHorizontalSurface(bottomLayer, false);
+        writeVerticalSurface(bottomLayer, topLayer);
+        writeHorizontalSurface(topLayer, true);
 
-        for (double a = 0.0; a < (2.0 * Math.PI); a += angleStep)
+        try (PrintWriter writer = new PrintWriter(outputPath))
         {
-            bottomCell(a, bottomBorderThickness);
+            stl.writeAscii(new PrintWriter(writer));
+            writer.flush();
+        }
+    }
+
+    /**
+     * Creates a "border" (fixed thicklness) layer.
+     * @param z vertical absolute coordinate.
+     * @param borderThickness thickness of the border.
+     * @return created layer.
+     */
+    private Layer createBorderLayer(final double z, final double borderThickness)
+    {
+        double [] [] outer = new double [imageWidth] [];
+        double [] [] inner = new double [imageWidth] [];
+        for (int col = 0; col < imageWidth; col++)
+        {
+            inner[col] = innerPoint(col, z, borderThickness);
+            outer[col] = outerPoint(col, z, borderThickness);
         }
 
-        stl.writeAscii(new PrintWriter(System.out));
+        return new Layer(outer, inner);
     }
 
-    protected void bottomCell(final double angle, final double thickness)
+    /**
+     * Calculates an outer shell point.
+     * @param col column of the point in image coordinates.
+     * @param z vertical absolute coordinate.
+     * @param thickness radial displacement from the base radius.
+     * @return point vector.
+     */
+    private double [] outerPoint(final int col, final double z, final double thickness)
     {
-        double nextAngle = angle + angleStep;
-        double cos = Math.cos(angle);
-        double sin = Math.sin(angle);
-        double nextCos = Math.cos(nextAngle);
-        double nextSin = Math.sin(nextAngle);
-        double p1[] = new double [] { cos * radius, sin * radius, 0.0 };
-        double p2[] = new double [] { cos * (radius + thickness), sin * (radius + thickness), 0.0 };
-        double p3[] = new double [] { nextCos * (radius + thickness),
-                nextSin * (radius + thickness), 0.0 };
-        double p4[] = new double [] { nextCos * (radius), nextSin * (radius), 0.0 };
-
-        stl.addTriangle(new Triangle(p1, p2, p4));
-        stl.addTriangle(new Triangle(p2, p3, p4));
+        if (flatInside)
+        {
+            return new double [] { cos[col] * (radius + thickness), sin[col] * (radius + thickness),
+                    z };
+        }
+        else
+        {
+            return new double [] { cos[col] * radius, sin[col] * radius, z };
+        }
     }
+
+    /**
+     * Calculates an inner shell point.
+     * @param col column of the point in image coordinates.
+     * @param z vertical absolute coordinate.
+     * @param thickness radial displacement from the base radius.
+     * @return point vector.
+     */
+    private double [] innerPoint(final int col, final double z, final double thickness)
+    {
+        if (flatInside)
+        {
+            return new double [] { cos[col] * radius, sin[col] * radius, z };
+        }
+        else
+        {
+            return new double [] { cos[col] * (radius - thickness), sin[col] * (radius - thickness),
+                    z };
+        }
+    }
+
+    /**
+     * Writes an horizontal surface to sìthe Stl stream.
+     * @param layer outer and inner perimeters.
+     * @param top if true a top surface is written, if false a bottom surface.
+     */
+    private void writeHorizontalSurface(final Layer layer, final boolean top)
+    {
+        int l = layer.innerPerimeter().length;
+        for (int i = 0; i < l; i++)
+        {
+            // j = next point (may wrap)
+            int j = (i + 1) % l;
+
+            // a bottom surface by default, normal inverted if top
+            stl.addTriangle(new Triangle(layer.innerPerimeter()[i], layer.outerPerimeter()[j],
+                    layer.outerPerimeter()[i], top));
+            stl.addTriangle(new Triangle(layer.innerPerimeter()[i], layer.innerPerimeter()[j],
+                    layer.outerPerimeter()[j], top));
+        }
+    }
+
+    /**
+     * Writes a vertical mesh for the outer surface and one for the inner surface
+     * @param layer1 lower layer points.
+     * @param layer2 higher level points.
+     */
+    private void writeVerticalSurface(final Layer layer1, final Layer layer2)
+    {
+        int l = layer1.innerPerimeter().length;
+        for (int i = 0; i < l; i++)
+        {
+            // j = next point (may wrap)
+            int j = (i + 1) % l;
+
+            // outer surface
+            stl.addTriangle(new Triangle(layer1.outerPerimeter()[i], layer2.outerPerimeter()[j],
+                    layer2.outerPerimeter()[i]));
+            stl.addTriangle(new Triangle(layer1.outerPerimeter()[i], layer1.outerPerimeter()[j],
+                    layer2.outerPerimeter()[j]));
+
+            // inner surface
+            stl.addTriangle(new Triangle(layer1.innerPerimeter()[i], layer2.innerPerimeter()[i],
+                    layer2.innerPerimeter()[j]));
+            stl.addTriangle(new Triangle(layer1.innerPerimeter()[i], layer2.innerPerimeter()[j],
+                    layer1.innerPerimeter()[j]));
+
+        }
+    }
+
 }

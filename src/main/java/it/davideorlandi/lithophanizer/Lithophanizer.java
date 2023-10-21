@@ -2,11 +2,10 @@ package it.davideorlandi.lithophanizer;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
-import java.io.BufferedWriter;
+import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.Locale;
 
 import javax.imageio.ImageIO;
@@ -16,6 +15,9 @@ import javax.imageio.ImageIO;
  */
 public class Lithophanizer
 {
+    /** Outoput buffer size in bytes */
+    private static final int BUFFER_SIZE = 2 * 1024 * 1024;
+
     private File imagePath;
 
     private File outputPath;
@@ -115,7 +117,7 @@ public class Lithophanizer
         this.angleStep = (2.0 * Math.PI) / imageWidth;
         this.pixelStep = (Math.PI * diameter) / imageWidth;
 
-        System.out.format(Locale.US, "Diamater: %.1f mm; Height: %.1f mm; Pixel size: %.2f mm%n",
+        System.out.format(Locale.US, "Diameter: %.1f mm; Height: %.1f mm; Pixel size: %.2f mm%n",
                 diameter, imageHeight * pixelStep, pixelStep);
 
         // precalculate cos and sin
@@ -146,11 +148,10 @@ public class Lithophanizer
         }
         writeHorizontalSurface(previousLayer, true);
 
-        try (PrintWriter writer = new PrintWriter(
-                new BufferedWriter(new FileWriter(outputPath), 8 * 1024 * 1024)))
+        try (BufferedOutputStream stream = new BufferedOutputStream(
+                new FileOutputStream(outputPath), BUFFER_SIZE))
         {
-            stl.writeAscii(new PrintWriter(writer));
-            writer.flush();
+            stl.writeBinary(stream);
         }
     }
 

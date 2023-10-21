@@ -1,7 +1,10 @@
 package it.davideorlandi.lithophanizer;
 
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,18 +38,21 @@ public class Stl
     }
 
     /**
-     * Writes the model to an ASCII STL file.
-     * @param writer destination writer.
+     * Writes the model to a binary STL file.
+     * @param stream destination stream.
      * @throws IOException error while writing.
      */
-    public void writeAscii(final PrintWriter writer) throws IOException
+    public void writeBinary(final OutputStream stream) throws IOException
     {
-        writer.println(String.format("solid %s", name));
+        ByteBuffer header = ByteBuffer.allocate(80 + 4).order(ByteOrder.LITTLE_ENDIAN);
+        header.put(String.format("%-80s", "Cylindrical lithophane").getBytes(
+                StandardCharsets.US_ASCII));
+        header.putInt(triangles.size());
+        stream.write(header.array());
         for (Triangle triangle : triangles)
         {
-            triangle.writeAscii(writer);
+            triangle.writeBinary(stream);
         }
-        writer.println("endsolid");
-        writer.flush();
+        stream.flush();
     }
 }

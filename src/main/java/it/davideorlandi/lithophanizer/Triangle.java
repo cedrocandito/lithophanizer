@@ -1,7 +1,9 @@
 package it.davideorlandi.lithophanizer;
 
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /**
  * Model of a STL's triangle.
@@ -92,31 +94,33 @@ public class Triangle
     }
 
     /**
-     * Writes a triangle to the specified writer.
-     * @param writer output writer.
-     * @throws IOException error while writing;
+     * Writes this triangle to a binary stream.
+     * @param stream outout stream (buffered is better).
+     * @throws IOException error writing data.
      */
-    public void writeAscii(final PrintWriter writer) throws IOException
+    public void writeBinary(final OutputStream stream) throws IOException
     {
-        double [] normal = calculateNormal();
-        writer.println(String.format(" facet normal %s", formatVector(normal)));
-        writer.println("  outer loop");
-        for (double [] vertex : vertices)
+        ByteBuffer b = ByteBuffer.allocate(50).order(ByteOrder.LITTLE_ENDIAN);
+        putVectorIntoByteBuffer(b, calculateNormal());
+        for (int v = 0; v < 3; v++)
         {
-            writer.println(String.format("   vertex %s", formatVector(vertex)));
+            putVectorIntoByteBuffer(b, vertices[v]);
         }
-        writer.println("  endloop");
-        writer.println(" endfacet");
+        b.putShort((short) 0);
+
+        stream.write(b.array());
     }
 
     /**
-     * Formats a vector as three float numbers separated by spaces.
-     * @param vector vector to be formatted.
-     * @return formatted vector.
+     * Put a vector of 3 double as 3 floats in a ByteBuffer.
+     * @param bb destination buffer.
+     * @param vector array of x, y, z.
      */
-    protected String formatVector(final double [] vector)
+    private void putVectorIntoByteBuffer(final ByteBuffer bb, final double [] vector)
     {
-        return vector[0] + " " + vector[1] + " " + vector[2];
-        // return String.format(Locale.US, "%.3f %.3f %.3f", vector[0], vector[1], vector[2]);
+        for (int i = 0; i < 3; i++)
+        {
+            bb.putFloat((float) vector[i]);
+        }
     }
 }

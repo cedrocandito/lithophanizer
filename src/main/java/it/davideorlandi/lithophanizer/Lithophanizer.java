@@ -1,9 +1,13 @@
 package it.davideorlandi.lithophanizer;
 
+import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Locale;
 
 import javax.imageio.ImageIO;
 
@@ -41,6 +45,8 @@ public class Lithophanizer
     private BufferedImage image;
 
     private double angleStep;
+
+    private double pixelStep;
 
     private Stl stl;
 
@@ -107,6 +113,10 @@ public class Lithophanizer
         this.imageHeight = image.getHeight();
 
         this.angleStep = (2.0 * Math.PI) / imageWidth;
+        this.pixelStep = (Math.PI * diameter) / imageWidth;
+
+        System.out.format(Locale.US, "Diamater: %.1f mm; Height: %.1f mm; Pixel size: %.2f mm%n",
+                diameter, imageHeight * pixelStep, pixelStep);
 
         // precalculate cos and sin
         this.cos = new double [imageWidth];
@@ -120,18 +130,24 @@ public class Lithophanizer
 
         stl = new Stl("lithophane");
 
-        // ?????
-        // System.out.println(image.getWidth() + " x " + image.getHeight());
-        // System.out.println("primo pixel: " + new Color(image.getRGB(0, 0)));
-        // ?????
+        // Layer bottomLayer = createBorderLayer(0.0, bottomBorderThickness);
+        // Layer topLayer = createBorderLayer(bottomBorderHeight, bottomBorderThickness);
+        // writeHorizontalSurface(bottomLayer, false);
+        // writeVerticalSurface(bottomLayer, topLayer);
+        // writeHorizontalSurface(topLayer, true);
 
-        Layer bottomLayer = createBorderLayer(0.0, bottomBorderThickness);
-        Layer topLayer = createBorderLayer(bottomBorderHeight, bottomBorderThickness);
-        writeHorizontalSurface(bottomLayer, false);
-        writeVerticalSurface(bottomLayer, topLayer);
-        writeHorizontalSurface(topLayer, true);
+        Layer previousLayer = createLithophaneLayer(0, 0.0);
+        writeHorizontalSurface(previousLayer, false);
+        for (int i = 1; i < imageHeight; i++)
+        {
+            Layer currentLayer = createLithophaneLayer(i, pixelStep);
+            writeVerticalSurface(previousLayer, currentLayer);
+            previousLayer = currentLayer;
+        }
+        writeHorizontalSurface(previousLayer, true);
 
-        try (PrintWriter writer = new PrintWriter(outputPath))
+        try (PrintWriter writer = new PrintWriter(
+                new BufferedWriter(new FileWriter(outputPath), 8 * 1024 * 1024)))
         {
             stl.writeAscii(new PrintWriter(writer));
             writer.flush();
@@ -139,7 +155,43 @@ public class Lithophanizer
     }
 
     /**
-     * Creates a "border" (fixed thicklness) layer.
+     * Returns the B component of the HSB model from a pixel in 0-1 scale.
+     * @param x pixel x coordinate.
+     * @param y pixel y coordinate.
+     * @return brighntss (0-1)
+     */
+    private float getPixelBrighness(final int x, final int y)
+    {
+        Color c = new Color(image.getRGB(x, imageHeight - 1 - y));
+        return Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null)[2];
+    }
+
+    /**
+     * Creates a lithphane layer.
+     * @param row image row.
+     * @param zoffset vertical absolute coordinate of row 0 (not the current row).
+     * @return created layer.
+     */
+    private Layer createLithophaneLayer(final int row, final double zoffset)
+    {
+        double [] [] outer = new double [imageWidth] [];
+        double [] [] inner = new double [imageWidth] [];
+        for (int col = 0; col < imageWidth; col++)
+        {
+            double brightness = getPixelBrighness(col, row);
+
+            // brighter = thinner
+            double thickness = ((1 - brightness) * (maxThickness - minThickness)) + minThickness;
+
+            inner[col] = innerPoint(col, (row * pixelStep) + zoffset, thickness);
+            outer[col] = outerPoint(col, (row * pixelStep) + zoffset, thickness);
+        }
+
+        return new Layer(outer, inner);
+    }
+
+    /**
+     * Creates a "border" (fixed thickness) layer.
      * @param z vertical absolute coordinate.
      * @param borderThickness thickness of the border.
      * @return created layer.

@@ -2,7 +2,6 @@ package it.davideorlandi.lithophanizer;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Locale;
 
 /**
  * Model of a STL's triangle.
@@ -117,6 +116,7 @@ public class Triangle
      */
     protected String formatVector(final double [] vector)
     {
-        return String.format(Locale.US, "%.3f %.3f %.3f", vector[0], vector[1], vector[2]);
+        return vector[0] + " " + vector[1] + " " + vector[2];
+        // return String.format(Locale.US, "%.3f %.3f %.3f", vector[0], vector[1], vector[2]);
     }
 }

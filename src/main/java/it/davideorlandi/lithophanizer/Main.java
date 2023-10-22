@@ -57,17 +57,17 @@ public class Main
 
     private static final String MAX_THICKNESS_LONG_OPTION = "thickness-max";
 
-    private static final String TOP_BORDER_HEIGHT_LONG_OPTION = "border-top-height";
+    private static final String TOP_BORDER_HEIGHT_LONG_OPTION = "top-border-height";
 
-    private static final String TOP_BORDER_THICKNESS_LONG_OPTION = "border-top-thickness";
+    private static final String TOP_BORDER_THICKNESS_LONG_OPTION = "top-border-thickness";
 
-    private static final String TOP_BORDER_TRANSITION_LONG_OPTION = "top-bottom-transition";
+    private static final String TOP_BORDER_TRANSITION_LONG_OPTION = "top-border-transition";
 
-    private static final String BOTTOM_BORDER_HEIGHT_LONG_OPTION = "border-bottom-height";
+    private static final String BOTTOM_BORDER_HEIGHT_LONG_OPTION = "bottom-border-height";
 
-    private static final String BOTTOM_BORDER_THICKNESS_LONG_OPTION = "border-bottom-thickness";
+    private static final String BOTTOM_BORDER_THICKNESS_LONG_OPTION = "bottom-border-thickness";
 
-    private static final String BOTTOM_BORDER_TRANSITION_LONG_OPTION = "border-bottom-transition";
+    private static final String BOTTOM_BORDER_TRANSITION_LONG_OPTION = "bottom-border-transition";
 
     private static final String FLAT_INSIDE_LONG_OPTION = "flat-inside";
 

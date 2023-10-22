@@ -44,9 +44,11 @@ public class Lithophanizer
 
     private boolean flatInside;
 
-    private int imageWidth;
+    private int imageWidthPixels;
 
-    private int imageHeight;
+    private int imageHeightPixels;
+
+    private double imageHeightMillimeters;
 
     private BufferedImage image;
 
@@ -122,19 +124,20 @@ public class Lithophanizer
                     "Mmaximum thickness must be greater than minimum thickness");
 
         this.image = ImageIO.read(imagePath);
-        this.imageWidth = image.getWidth();
-        this.imageHeight = image.getHeight();
+        this.imageWidthPixels = image.getWidth();
+        this.imageHeightPixels = image.getHeight();
 
-        this.angleStep = (2.0 * Math.PI) / imageWidth;
-        this.pixelStep = (Math.PI * diameter) / imageWidth;
+        this.angleStep = (2.0 * Math.PI) / imageWidthPixels;
+        this.pixelStep = (Math.PI * diameter) / imageWidthPixels;
+        this.imageHeightMillimeters = imageHeightPixels * pixelStep;
 
         System.out.format(Locale.US, "Diameter: %.1f mm; Height: %.1f mm; Pixel size: %.2f mm%n",
-                diameter, imageHeight * pixelStep, pixelStep);
+                diameter, imageHeightPixels * pixelStep, pixelStep);
 
         // precalculate cos and sin
-        this.cos = new double [imageWidth];
-        this.sin = new double [imageWidth];
-        for (int col = 0; col < imageWidth; col++)
+        this.cos = new double [imageWidthPixels];
+        this.sin = new double [imageWidthPixels];
+        for (int col = 0; col < imageWidthPixels; col++)
         {
             double a = col * angleStep;
             cos[col] = Math.cos(a);
@@ -143,21 +146,57 @@ public class Lithophanizer
 
         stl = new Stl(String.format("Cylindrical lithophane from %s", imagePath.getName()));
 
-        // Layer bottomLayer = createBorderLayer(0.0, bottomBorderThickness);
-        // Layer topLayer = createBorderLayer(bottomBorderHeight, bottomBorderThickness);
-        // writeHorizontalSurface(bottomLayer, false);
-        // writeVerticalSurface(bottomLayer, topLayer);
-        // writeHorizontalSurface(topLayer, true);
+        final int startLithophaneRow;
+        final int lastLithophaneRow;
+        final double lithophaneVerticalOffset;
+        final Layer previousLayer;
 
-        Layer previousLayer = createLithophaneLayer(0, 0.0);
-        writeHorizontalSurface(previousLayer, false);
-        for (int i = 1; i < imageHeight; i++)
+        if (bottomBorderHeight > 0.0)
         {
-            Layer currentLayer = createLithophaneLayer(i, pixelStep);
-            writeVerticalSurface(previousLayer, currentLayer);
-            previousLayer = currentLayer;
+            Layer borderLayer1 = createBorderLayer(0.0, bottomBorderThickness);
+            Layer borderLayer2 = createBorderLayer(bottomBorderHeight, bottomBorderThickness);
+            writeHorizontalSurface(borderLayer1, false);
+            writeVerticalSurface(borderLayer1, borderLayer2);
+            previousLayer = borderLayer2;
+            startLithophaneRow = 1;
+            lithophaneVerticalOffset = bottomBorderHeight;
         }
-        writeHorizontalSurface(previousLayer, true);
+        else
+        {
+            Layer bottomLayer = createLithophaneLayer(0, 0.0);
+            writeHorizontalSurface(bottomLayer, false);
+            previousLayer = bottomLayer;
+            startLithophaneRow = 0;
+            lithophaneVerticalOffset = 0.0;
+        }
+
+        if (topBorderHeight > 0.0)
+        {
+            lastLithophaneRow = imageHeightPixels - 2;
+        }
+        else
+        {
+            lastLithophaneRow = imageHeightPixels - 1;
+        }
+
+        Layer lastLithophaneLayer = createLithophaneBody(previousLayer, startLithophaneRow,
+                lastLithophaneRow, lithophaneVerticalOffset);
+
+        double lastLayerZ = lastLithophaneLayer.innerPerimeter()[0][2];
+        if (topBorderHeight > 0.0)
+        {
+            Layer borderLayer1 = createBorderLayer(lastLayerZ + pixelStep, topBorderThickness);
+            Layer borderLayer2 = createBorderLayer(lastLayerZ + pixelStep + bottomBorderHeight,
+                    topBorderThickness);
+
+            writeVerticalSurface(lastLithophaneLayer, borderLayer1);
+            writeVerticalSurface(borderLayer1, borderLayer2);
+            writeHorizontalSurface(borderLayer2, true);
+        }
+        else
+        {
+            writeHorizontalSurface(lastLithophaneLayer, true);
+        }
 
         try (BufferedOutputStream stream = new BufferedOutputStream(
                 new FileOutputStream(outputPath), BUFFER_SIZE))
@@ -171,15 +210,16 @@ public class Lithophanizer
      * @param previousLayer previous layer to build up from.
      * @param firstRow index of the first row of the image to generate.
      * @param lastRow index of the last row of the image to generate (inclusive).
+     * @param rowZeroVerticalOffset vertical absolute coordinate of row 0 (not the current row).
      * @return the last generated layer.
      */
     private Layer createLithophaneBody(final Layer previousLayer, final int firstRow,
-            final int lastRow)
+            final int lastRow, final double rowZeroVerticalOffset)
     {
         Layer lastLayer = previousLayer;
         for (int i = firstRow; i <= lastRow; i++)
         {
-            Layer currentLayer = createLithophaneLayer(i, pixelStep);
+            Layer currentLayer = createLithophaneLayer(i, rowZeroVerticalOffset);
             writeVerticalSurface(lastLayer, currentLayer);
             lastLayer = currentLayer;
         }
@@ -194,32 +234,90 @@ public class Lithophanizer
      */
     private float getPixelBrighness(final int x, final int y)
     {
-        Color c = new Color(image.getRGB(x, imageHeight - 1 - y));
+        Color c = new Color(image.getRGB(x, imageHeightPixels - 1 - y));
         return Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null)[2];
     }
 
     /**
      * Creates a lithphane layer.
      * @param row image row.
-     * @param zoffset vertical absolute coordinate of row 0 (not the current row).
+     * @param rowZeroVerticalOffset vertical absolute coordinate of row 0 (not the current row).
      * @return created layer.
      */
-    private Layer createLithophaneLayer(final int row, final double zoffset)
+    private Layer createLithophaneLayer(final int row, final double rowZeroVerticalOffset)
     {
-        double [] [] outer = new double [imageWidth] [];
-        double [] [] inner = new double [imageWidth] [];
-        for (int col = 0; col < imageWidth; col++)
+        double transitionProportion = getTransitionProportion(row);
+        double transitionBorderThickness = getCurrentTransitionBorderThickness(row);
+
+        double [] [] outer = new double [imageWidthPixels] [];
+        double [] [] inner = new double [imageWidthPixels] [];
+        for (int col = 0; col < imageWidthPixels; col++)
         {
             double brightness = getPixelBrighness(col, row);
 
             // brighter = thinner
-            double thickness = ((1 - brightness) * (maxThickness - minThickness)) + minThickness;
+            double rawThickness = ((1 - brightness) * (maxThickness - minThickness)) + minThickness;
 
-            inner[col] = innerPoint(col, (row * pixelStep) + zoffset, thickness);
-            outer[col] = outerPoint(col, (row * pixelStep) + zoffset, thickness);
+            // adjust for border transitions
+            double thickness = (rawThickness * transitionProportion)
+                    + (transitionBorderThickness * (1 - transitionProportion));
+
+            inner[col] = innerPoint(col, (row * pixelStep) + rowZeroVerticalOffset, thickness);
+            outer[col] = outerPoint(col, (row * pixelStep) + rowZeroVerticalOffset, thickness);
         }
 
         return new Layer(outer, inner);
+    }
+
+    /**
+     * Calculates the proportion between normal lithophane thickness and border thickness on this
+     * row. 1 is full lithophane thickness, 0 is full border thickness, 0.5 is an naverage between
+     * the two.
+     * @param row index of the current row.
+     * @return proportion between normal lithophane thickness and border thickness.
+     */
+    private double getTransitionProportion(final int row)
+    {
+        double height = row * pixelStep;
+        if ((bottomBorderHeight > 0.0) && (height < bottomBorderTransition))
+        {
+            return height / bottomBorderTransition;
+        }
+        else if ((topBorderHeight > 0.0)
+                && (height > (imageHeightMillimeters - topBorderTransition)))
+        {
+            return (imageHeightMillimeters - height) / topBorderTransition;
+        }
+        else
+        {
+            // row not in transition
+            return 1.0;
+        }
+    }
+
+    /**
+     * Returns the thickess of the border transition we're currently in (top or bottom), or 0 if no
+     * border transition is active.
+     * @param row current eow index.
+     * @return current border transition thickness.
+     */
+    private double getCurrentTransitionBorderThickness(final int row)
+    {
+        double height = row * pixelStep;
+        if ((bottomBorderHeight > 0.0) && (height < bottomBorderTransition))
+        {
+            return bottomBorderThickness;
+        }
+        else if ((topBorderHeight > 0.0)
+                && (height > (imageHeightMillimeters - topBorderTransition)))
+        {
+            return topBorderThickness;
+        }
+        else
+        {
+            // row not in transition
+            return 0.0;
+        }
     }
 
     /**
@@ -230,9 +328,9 @@ public class Lithophanizer
      */
     private Layer createBorderLayer(final double z, final double borderThickness)
     {
-        double [] [] outer = new double [imageWidth] [];
-        double [] [] inner = new double [imageWidth] [];
-        for (int col = 0; col < imageWidth; col++)
+        double [] [] outer = new double [imageWidthPixels] [];
+        double [] [] inner = new double [imageWidthPixels] [];
+        for (int col = 0; col < imageWidthPixels; col++)
         {
             inner[col] = innerPoint(col, z, borderThickness);
             outer[col] = outerPoint(col, z, borderThickness);

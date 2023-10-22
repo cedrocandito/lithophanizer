@@ -44,9 +44,9 @@ public class Stl
      */
     public void writeBinary(final OutputStream stream) throws IOException
     {
+        String truncatedName = name.length() <= 80 ? name : name.substring(0, 80);
         ByteBuffer header = ByteBuffer.allocate(80 + 4).order(ByteOrder.LITTLE_ENDIAN);
-        header.put(String.format("%-80s", "Cylindrical lithophane").getBytes(
-                StandardCharsets.US_ASCII));
+        header.put(String.format("%-80s", truncatedName).getBytes(StandardCharsets.US_ASCII));
         header.putInt(triangles.size());
         stream.write(header.array());
         for (Triangle triangle : triangles)

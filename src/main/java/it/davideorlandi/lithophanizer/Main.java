@@ -19,17 +19,21 @@ public class Main
 
     private static final String DEFAULT_DIAMETER = "150.0";
 
-    private static final String DEFAULT_MIN_THICKNESS = "1.0";
+    private static final String DEFAULT_MIN_THICKNESS = "0.6";
 
-    private static final String DEFAULT_MAX_THICKNESS = "5.0";
+    private static final String DEFAULT_MAX_THICKNESS = "3.0";
 
-    private static final String DEFAULT_TOP_BORDER_HEIGHT = "4.0";
+    private static final String DEFAULT_TOP_BORDER_HEIGHT = "3.0";
 
     private static final String DEFAULT_TOP_BORDER_THICKNESS = "3.0";
 
-    private static final String DEFAULT_BOTTOM_BORDER_HEIGHT = "4.0";
+    private static final String DEFAULT_TOP_BORDER_TRANSITION = "2.0";
+
+    private static final String DEFAULT_BOTTOM_BORDER_HEIGHT = "3.0";
 
     private static final String DEFAULT_BOTTOM_BORDER_THICKNESS = "3.0";
+
+    private static final String DEFAULT_BOTTOM_BORDER_TRANSITION = "2.0";
 
     // CLI options
 
@@ -57,9 +61,13 @@ public class Main
 
     private static final String TOP_BORDER_THICKNESS_LONG_OPTION = "border-top-thickness";
 
+    private static final String TOP_BORDER_TRANSITION_LONG_OPTION = "top-bottom-transition";
+
     private static final String BOTTOM_BORDER_HEIGHT_LONG_OPTION = "border-bottom-height";
 
     private static final String BOTTOM_BORDER_THICKNESS_LONG_OPTION = "border-bottom-thickness";
+
+    private static final String BOTTOM_BORDER_TRANSITION_LONG_OPTION = "border-bottom-transition";
 
     private static final String FLAT_INSIDE_LONG_OPTION = "flat-inside";
 
@@ -103,6 +111,11 @@ public class Main
                 "Thickness of top border; default " + DEFAULT_TOP_BORDER_THICKNESS
                         + ".").hasArg().argName("number").type(Double.class).build());
 
+        op.addOption(Option.builder().longOpt(TOP_BORDER_TRANSITION_LONG_OPTION).desc(
+                "Lenght of the bottom transition band between top border and lithophane, ignored if border disable; default "
+                        + DEFAULT_TOP_BORDER_TRANSITION + ".").hasArg().argName("number").type(
+                                Double.class).build());
+
         op.addOption(Option.builder().longOpt(BOTTOM_BORDER_HEIGHT_LONG_OPTION).desc(
                 "Height of bottom border (0 = no border); default " + DEFAULT_BOTTOM_BORDER_HEIGHT
                         + ".").hasArg().argName("number").type(Double.class).build());
@@ -110,6 +123,11 @@ public class Main
         op.addOption(Option.builder().longOpt(BOTTOM_BORDER_THICKNESS_LONG_OPTION).desc(
                 "Thickness of bottom border; default " + DEFAULT_BOTTOM_BORDER_THICKNESS
                         + ".").hasArg().argName("number").type(Double.class).build());
+
+        op.addOption(Option.builder().longOpt(BOTTOM_BORDER_TRANSITION_LONG_OPTION).desc(
+                "Lenght of the bottom transition band between bottom border and lithophane, ignored if border disable; default "
+                        + DEFAULT_BOTTOM_BORDER_TRANSITION + ".").hasArg().argName("number").type(
+                                Double.class).build());
 
         op.addOption(Option.builder().longOpt(FLAT_INSIDE_LONG_OPTION).desc(
                 "Makes the patterned face outside and the flat face inside (default is flat outside).").build());
@@ -138,15 +156,20 @@ public class Main
                         TOP_BORDER_THICKNESS_LONG_OPTION, DEFAULT_TOP_BORDER_THICKNESS));
                 double topBorderHeight = Double.valueOf(cmd.getOptionValue(
                         TOP_BORDER_HEIGHT_LONG_OPTION, DEFAULT_TOP_BORDER_HEIGHT));
+                double topBorderTransition = Double.valueOf(cmd.getOptionValue(
+                        TOP_BORDER_TRANSITION_LONG_OPTION, DEFAULT_TOP_BORDER_TRANSITION));
                 double bottomBorderThickness = Double.valueOf(cmd.getOptionValue(
                         BOTTOM_BORDER_THICKNESS_LONG_OPTION, DEFAULT_BOTTOM_BORDER_THICKNESS));
                 double bottomBorderHeight = Double.valueOf(cmd.getOptionValue(
                         BOTTOM_BORDER_HEIGHT_LONG_OPTION, DEFAULT_BOTTOM_BORDER_HEIGHT));
+                double bottomBorderTransition = Double.valueOf(cmd.getOptionValue(
+                        BOTTOM_BORDER_TRANSITION_LONG_OPTION, DEFAULT_BOTTOM_BORDER_TRANSITION));
                 boolean flatInside = cmd.hasOption(FLAT_INSIDE_LONG_OPTION);
 
                 Lithophanizer lithophanizer = new Lithophanizer(imagePath, outputPath, diameter,
                         minThickness, maxThickness, topBorderThickness, topBorderHeight,
-                        bottomBorderThickness, bottomBorderHeight, flatInside);
+                        topBorderTransition, bottomBorderThickness, bottomBorderHeight,
+                        bottomBorderTransition, flatInside);
                 lithophanizer.generateLithophane();
             }
         }

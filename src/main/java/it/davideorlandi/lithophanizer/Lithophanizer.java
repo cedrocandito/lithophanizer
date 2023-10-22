@@ -34,9 +34,13 @@ public class Lithophanizer
 
     private double topBorderHeight;
 
+    private double topBorderTransition;
+
     private double bottomBorderThickness;
 
     private double bottomBorderHeight;
+
+    private double bottomBorderTransition;
 
     private boolean flatInside;
 
@@ -67,15 +71,20 @@ public class Lithophanizer
      * @param maxThickness maximum (darkest) thickness.
      * @param topBorderThickness thickness of the top border.
      * @param topBorderHeight height of the top border; if 0 there will be no top border.
+     * @param topBorderTransition length of the top border transition band; ignored if
+     *        topBorderHeight<=0.
      * @param bottomBorderThickness thickness of the bottom border.
      * @param bottomBorderHeight height of the nottom border; if 0 there will be no bottom border.
+     * @param bottomBorderTransition length of the bottom border transition band; ignored if
+     *        bottomBorderHeight<=0.
      * @param flatInside if true the flat face will be on the inside; if false it will be on the
      *        outside.
      */
     public Lithophanizer(final File imagePath, final File outputPath, final double diameter,
             final double minThickness, final double maxThickness, final double topBorderThickness,
-            final double topBorderHeight, final double bottomBorderThickness,
-            final double bottomBorderHeight, final boolean flatInside)
+            final double topBorderHeight, final double topBorderTransition,
+            final double bottomBorderThickness, final double bottomBorderHeight,
+            final double bottomBorderTransition, final boolean flatInside)
     {
         this.imagePath = imagePath;
         this.outputPath = outputPath;
@@ -85,8 +94,10 @@ public class Lithophanizer
         this.maxThickness = maxThickness;
         this.topBorderThickness = topBorderThickness;
         this.topBorderHeight = topBorderHeight;
+        this.topBorderTransition = topBorderTransition;
         this.bottomBorderThickness = bottomBorderThickness;
         this.bottomBorderHeight = bottomBorderHeight;
+        this.bottomBorderTransition = bottomBorderTransition;
         this.flatInside = flatInside;
     }
 
@@ -130,7 +141,7 @@ public class Lithophanizer
             sin[col] = Math.sin(a);
         }
 
-        stl = new Stl("lithophane");
+        stl = new Stl(String.format("Cylindrical lithophane from %s", imagePath.getName()));
 
         // Layer bottomLayer = createBorderLayer(0.0, bottomBorderThickness);
         // Layer topLayer = createBorderLayer(bottomBorderHeight, bottomBorderThickness);
@@ -153,6 +164,26 @@ public class Lithophanizer
         {
             stl.writeBinary(stream);
         }
+    }
+
+    /**
+     * Adds lithophane layers for the specified image rows to the STL model.
+     * @param previousLayer previous layer to build up from.
+     * @param firstRow index of the first row of the image to generate.
+     * @param lastRow index of the last row of the image to generate (inclusive).
+     * @return the last generated layer.
+     */
+    private Layer createLithophaneBody(final Layer previousLayer, final int firstRow,
+            final int lastRow)
+    {
+        Layer lastLayer = previousLayer;
+        for (int i = firstRow; i <= lastRow; i++)
+        {
+            Layer currentLayer = createLithophaneLayer(i, pixelStep);
+            writeVerticalSurface(lastLayer, currentLayer);
+            lastLayer = currentLayer;
+        }
+        return lastLayer;
     }
 
     /**

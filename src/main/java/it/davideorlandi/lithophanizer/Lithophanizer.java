@@ -131,8 +131,10 @@ public class Lithophanizer
         this.pixelStep = (Math.PI * diameter) / imageWidthPixels;
         this.imageHeightMillimeters = imageHeightPixels * pixelStep;
 
-        System.out.format(Locale.US, "Diameter: %.1f mm; Height: %.1f mm; Pixel size: %.2f mm%n",
-                diameter, imageHeightPixels * pixelStep, pixelStep);
+        System.out.format(Locale.US,
+                "Diameter: %.1f mm; height: %.1f mm; pixel size: %.2f mm; pixels per mm: %.1f%n",
+                diameter, (imageHeightPixels * pixelStep) + bottomBorderHeight + topBorderHeight,
+                pixelStep, 1.0 / pixelStep);
 
         // precalculate cos and sin
         this.cos = new double [imageWidthPixels];
@@ -203,6 +205,8 @@ public class Lithophanizer
         {
             stl.writeBinary(stream);
         }
+
+        System.out.println("Lithophane generation complete.");
     }
 
     /**

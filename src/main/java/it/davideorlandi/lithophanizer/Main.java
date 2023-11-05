@@ -1,6 +1,7 @@
 package it.davideorlandi.lithophanizer;
 
 import java.io.File;
+import java.util.jar.Manifest;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -34,6 +35,8 @@ public class Main
     private static final String DEFAULT_BOTTOM_BORDER_THICKNESS = "3.0";
 
     private static final String DEFAULT_BOTTOM_BORDER_TRANSITION = "2.0";
+
+    private static final String DEFAULT_ROUGH_FACE = "both";
 
     // CLI options
 
@@ -69,7 +72,7 @@ public class Main
 
     private static final String BOTTOM_BORDER_TRANSITION_LONG_OPTION = "bottom-border-transition";
 
-    private static final String FLAT_OUTSIDE_LONG_OPTION = "flat-outside";
+    private static final String ROUGH_FACE_LONG_OPTION = "rough-face";
 
     /**
      * Entry point.
@@ -87,7 +90,7 @@ public class Main
                         "path").required().type(String.class).build());
         op.addOption(
                 Option.builder().option(DIAMETER_SHORT_OPTION).longOpt(DIAMETER_LONG_OPTION).desc(
-                        "Diameter of the lithophane cylinder, in millimeters, measured on the flat surface; default "
+                        "Diameter of the lithophane cylinder, in millimeters, measured on the flat surface (or the middle point between faces if --rough-face=both); default "
                                 + DEFAULT_DIAMETER + ".").hasArg().argName("number").type(
                                         Double.class).build());
 
@@ -129,15 +132,25 @@ public class Main
                         + DEFAULT_BOTTOM_BORDER_TRANSITION + ".").hasArg().argName("number").type(
                                 Double.class).build());
 
-        op.addOption(Option.builder().longOpt(FLAT_OUTSIDE_LONG_OPTION).desc(
-                "Makes the patterned face inside and the flat face outside (default is flat inside).").build());
+        op.addOption(Option.builder().longOpt(ROUGH_FACE_LONG_OPTION).desc(
+                "Where the rough (patterned) side should be: inside, outside or both. Default is "
+                        + DEFAULT_ROUGH_FACE + ".").hasArg().argName(
+                                "inside|outside|both").build());
 
         try
         {
             if (args.length == 0)
             {
+
+                Manifest manifest = new Manifest(
+                        ClassLoader.getSystemResourceAsStream("META-INF/MANIFEST.MF"));
+                String version = manifest.getMainAttributes().getValue("Implementation-Version");
+                System.out.println(String.format(
+                        "Lithophanizer %s\nGenerates cylindrical lithophane .stl files from PNG images.",
+                        version));
+                System.out.println();
                 HelpFormatter formatter = new HelpFormatter();
-                formatter.printHelp("lithophanizer", op, true);
+                formatter.printHelp("java -jar lithophanizer.jar", op, true);
             }
             else
             {
@@ -164,12 +177,13 @@ public class Main
                         BOTTOM_BORDER_HEIGHT_LONG_OPTION, DEFAULT_BOTTOM_BORDER_HEIGHT));
                 double bottomBorderTransition = Double.valueOf(cmd.getOptionValue(
                         BOTTOM_BORDER_TRANSITION_LONG_OPTION, DEFAULT_BOTTOM_BORDER_TRANSITION));
-                boolean flatInside = ! cmd.hasOption(FLAT_OUTSIDE_LONG_OPTION);
+                RoughFace roughFace = RoughFace.valueOf(cmd.getOptionValue(ROUGH_FACE_LONG_OPTION,
+                        DEFAULT_ROUGH_FACE).toUpperCase());
 
                 Lithophanizer lithophanizer = new Lithophanizer(imagePath, outputPath, diameter,
                         minThickness, maxThickness, topBorderThickness, topBorderHeight,
                         topBorderTransition, bottomBorderThickness, bottomBorderHeight,
-                        bottomBorderTransition, flatInside);
+                        bottomBorderTransition, roughFace);
                 lithophanizer.generateLithophane();
             }
         }

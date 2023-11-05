@@ -42,7 +42,7 @@ public class Lithophanizer
 
     private double bottomBorderTransition;
 
-    private boolean flatInside;
+    private RoughFace roughFace;
 
     private int imageWidthPixels;
 
@@ -79,14 +79,13 @@ public class Lithophanizer
      * @param bottomBorderHeight height of the nottom border; if 0 there will be no bottom border.
      * @param bottomBorderTransition length of the bottom border transition band; ignored if
      *        bottomBorderHeight<=0.
-     * @param flatInside if true the flat face will be on the inside; if false it will be on the
-     *        outside.
+     * @param roughFace where the rough face should be.
      */
     public Lithophanizer(final File imagePath, final File outputPath, final double diameter,
             final double minThickness, final double maxThickness, final double topBorderThickness,
             final double topBorderHeight, final double topBorderTransition,
             final double bottomBorderThickness, final double bottomBorderHeight,
-            final double bottomBorderTransition, final boolean flatInside)
+            final double bottomBorderTransition, final RoughFace roughFace)
     {
         this.imagePath = imagePath;
         this.outputPath = outputPath;
@@ -100,7 +99,7 @@ public class Lithophanizer
         this.bottomBorderThickness = bottomBorderThickness;
         this.bottomBorderHeight = bottomBorderHeight;
         this.bottomBorderTransition = bottomBorderTransition;
-        this.flatInside = flatInside;
+        this.roughFace = roughFace;
     }
 
     /**
@@ -352,14 +351,22 @@ public class Lithophanizer
      */
     private double [] outerPoint(final int col, final double z, final double thickness)
     {
-        if (flatInside)
+        switch (roughFace)
         {
-            return new double [] { cos[col] * (radius + thickness), sin[col] * (radius + thickness),
-                    z };
-        }
-        else
-        {
-            return new double [] { cos[col] * radius, sin[col] * radius, z };
+            case OUTSIDE:
+                return new double [] { cos[col] * (radius + thickness),
+                        sin[col] * (radius + thickness), z };
+
+            case INSIDE:
+                return new double [] { cos[col] * radius, sin[col] * radius, z };
+
+            case BOTH:
+                return new double [] { cos[col] * (radius + (thickness / 2.0)),
+                        sin[col] * (radius + (thickness / 2.0)), z };
+
+            default:
+                throw new UnsupportedOperationException(
+                        "rough face " + roughFace + " is not supported");
         }
     }
 
@@ -372,14 +379,22 @@ public class Lithophanizer
      */
     private double [] innerPoint(final int col, final double z, final double thickness)
     {
-        if (flatInside)
+        switch (roughFace)
         {
-            return new double [] { cos[col] * radius, sin[col] * radius, z };
-        }
-        else
-        {
-            return new double [] { cos[col] * (radius - thickness), sin[col] * (radius - thickness),
-                    z };
+            case OUTSIDE:
+                return new double [] { cos[col] * radius, sin[col] * radius, z };
+
+            case INSIDE:
+                return new double [] { cos[col] * (radius - thickness),
+                        sin[col] * (radius - thickness), z };
+
+            case BOTH:
+                return new double [] { cos[col] * (radius - (thickness / 2.0)),
+                        sin[col] * (radius - (thickness / 2.0)), z };
+
+            default:
+                throw new UnsupportedOperationException(
+                        "rough face " + roughFace + " is not supported");
         }
     }
 

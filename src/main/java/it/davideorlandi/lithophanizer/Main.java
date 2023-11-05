@@ -69,7 +69,7 @@ public class Main
 
     private static final String BOTTOM_BORDER_TRANSITION_LONG_OPTION = "bottom-border-transition";
 
-    private static final String FLAT_INSIDE_LONG_OPTION = "flat-inside";
+    private static final String FLAT_OUTSIDE_LONG_OPTION = "flat-outside";
 
     /**
      * Entry point.
@@ -129,8 +129,8 @@ public class Main
                         + DEFAULT_BOTTOM_BORDER_TRANSITION + ".").hasArg().argName("number").type(
                                 Double.class).build());
 
-        op.addOption(Option.builder().longOpt(FLAT_INSIDE_LONG_OPTION).desc(
-                "Makes the patterned face outside and the flat face inside (default is flat outside).").build());
+        op.addOption(Option.builder().longOpt(FLAT_OUTSIDE_LONG_OPTION).desc(
+                "Makes the patterned face inside and the flat face outside (default is flat inside).").build());
 
         try
         {
@@ -164,7 +164,7 @@ public class Main
                         BOTTOM_BORDER_HEIGHT_LONG_OPTION, DEFAULT_BOTTOM_BORDER_HEIGHT));
                 double bottomBorderTransition = Double.valueOf(cmd.getOptionValue(
                         BOTTOM_BORDER_TRANSITION_LONG_OPTION, DEFAULT_BOTTOM_BORDER_TRANSITION));
-                boolean flatInside = cmd.hasOption(FLAT_INSIDE_LONG_OPTION);
+                boolean flatInside = ! cmd.hasOption(FLAT_OUTSIDE_LONG_OPTION);
 
                 Lithophanizer lithophanizer = new Lithophanizer(imagePath, outputPath, diameter,
                         minThickness, maxThickness, topBorderThickness, topBorderHeight,
